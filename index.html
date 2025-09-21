@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corazón de Girasoles</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            text-align: center;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        #p5-canvas {
+            display: block;
+            margin: 0 auto;
+        }
+        .message {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            padding: 0 10px;
+            box-sizing: border-box;
+        }
+        .hearts {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+        @media (max-width: 600px) {
+            .message {
+                font-size: 1rem;
+                bottom: 10px;
+            }
+            .hearts {
+                top: 10px;
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hearts">❤️ 🌻 ❤️</div>
+        <div id="p5-canvas"></div>
+        <div class="message">Mi corazón se llena de girasoles y de ti</div>
+    </div>
+
+    <script>
+        // Variables para el corazón y los girasoles
+        let heartPoints = [];
+        let sunflowers = [];
+        let maxSunflowers = 150;
+        let currentCount = 0;
+        let growthSpeed = 0.03;
+        let lastAdded = 0;
+
+        function setup() {
+            // Crear un canvas que se ajuste al tamaño de la ventana
+            let canvas = createCanvas(windowWidth, windowHeight);
+            canvas.parent('p5-canvas');
+            noStroke();
+            
+            // Generar puntos para el contorno del corazón
+            createHeartShape();
+            
+            // Inicializar girasoles
+            for (let i = 0; i < maxSunflowers; i++) {
+                let found = false;
+                let x, y;
+                
+                // Buscar un punto aleatorio dentro del corazón
+                while (!found) {
+                    x = random(width);
+                    y = random(height);
+                    if (isInHeart(x, y)) {
+                        found = true;
+                    }
+                }
+                
+                sunflowers.push({
+                    x: x,
+                    y: y,
+                    size: 0,
+                    targetSize: random(12, 25),
+                    growthProgress: 0,
+                    petalColor: color(255, random(180, 220), 0),
+                    centerColor: color(random(70, 100), random(40, 60), random(5, 15))
+                });
+            }
+        }
+
+        function draw() {
+            // Fondo con gradiente suave
+            background(135, 206, 235, 50);
+            
+            // Dibujar contorno del corazón
+            drawHeartOutline();
+            
+            // Actualizar y dibujar girasoles
+            for (let i = 0; i < currentCount; i++) {
+                let s = sunflowers[i];
+                
+                // Crecer progresivamente
+                if (s.growthProgress < 1) {
+                    s.growthProgress += growthSpeed;
+                    s.size = s.targetSize * s.growthProgress;
+                }
+                
+                drawSunflower(s);
+            }
+            
+            // Añadir nuevos girasoles gradualmente
+            if (currentCount < maxSunflowers && millis() - lastAdded > 100) {
+                currentCount++;
+                lastAdded = millis();
+            }
+        }
+
+        function createHeartShape() {
+            // Fórmula paramétrica para un corazón
+            for (let angle = 0; angle < TWO_PI; angle += 0.01) {
+                let x = 16 * pow(sin(angle), 3);
+                let y = -(13 * cos(angle) - 5 * cos(2 * angle) - 2 * cos(3 * angle) - cos(4 * angle));
+                
+                // Escalar y centrar en el canvas
+                x = map(x, -20, 20, width * 0.3, width * 0.7);
+                y = map(y, -20, 20, height * 0.4, height * 0.8);
+                
+                heartPoints.push(createVector(x, y));
+            }
+        }
+
+        function drawHeartOutline() {
+            stroke(220, 20, 60);
+            strokeWeight(3);
+            noFill();
+            
+            beginShape();
+            for (let point of heartPoints) {
+                vertex(point.x, point.y);
+            }
+            endShape(CLOSE);
+        }
+
+        function isInHeart(x, y) {
+            // Verificar si el punto está dentro del corazón
+            let inside = false;
+            for (let i = 0, j = heartPoints.length - 1; i < heartPoints.length; j = i++) {
+                let xi = heartPoints[i].x, yi = heartPoints[i].y;
+                let xj = heartPoints[j].x, yj = heartPoints[j].y;
+                
+                let intersect = ((yi > y) != (yj > y)) &&
+                    (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        function drawSunflower(s) {
+            push();
+            translate(s.x, s.y);
+            
+            let displaySize = s.size;
+            
+            // Dibujar pétalos
+            if (displaySize > 2) {
+                fill(s.petalColor);
+                let numPetals = 12;
+                for (let i = 0; i < numPetals; i++) {
+                    rotate(TWO_PI / numPetals);
+                    ellipse(displaySize * 0.4, 0, displaySize * 0.5, displaySize * 0.3);
+                }
+            }
+            
+            // Dibujar centro
+            fill(s.centerColor);
+            circle(0, 0, displaySize * 0.4);
+            
+            pop();
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+            
+            // Regenerar puntos del corazón y girasoles al redimensionar
+            heartPoints = [];
+            createHeartShape();
+            
+            for (let s of sunflowers) {
+                let found = false;
+                let x, y;
+                
+                while (!found) {
+                    x = random(width);
+                    y = random(height);
+                    if (isInHeart(x, y)) {
+                        found = true;
+                    }
+                }
+                
+                s.x = x;
+                s.y = y;
+            }
+        }
+
+        // Reiniciar la animación al hacer clic/toque
+        function mousePressed() {
+            currentCount = 0;
+            for (let s of sunflowers) {
+                s.growthProgress = 0;
+                s.size = 0;
+            }
+            return false;
+        }
+
+        function touchStarted() {
+            mousePressed();
+            return false;
+        }
+    </script>
+</body>
+</html>
